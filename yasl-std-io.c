@@ -1,6 +1,7 @@
 #include "yasl-std-io.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #define YASL_FILE -1
 
