@@ -1,10 +1,129 @@
-#include "yasl-stdi-io.h"
+#include "yasl-std-io.h"
+#include <stdlib.h>
+#include <stdio.h>
 
-int load_YASL_io(struct YASL_State *S) {
-	struct YASL_Object *io = YASL_Table();
-	YASL_declglobal(S, "io");
-	YASL_pushobject(S, io);
-	YASL_setglobal(S, "io");
+#define YASL_FILE -1
 
-	return YASL_SUCCESS;
+int YASL_io_open(struct YASL_State *S) {
+    struct YASL_Object *mode = YASL_popobject(S);
+    char *mode_str;
+    if (YASL_isundef(mode) == YASL_SUCCESS) {
+        mode_str = "r";
+    } else if (YASL_isstring(mode) == YASL_SUCCESS) {
+        mode_str = YASL_getcstring(mode);
+    } else {
+        return -1;
+    }
+
+    struct YASL_Object *filename = YASL_popobject(S);
+    if (YASL_isstring(filename) != YASL_SUCCESS) {
+        return -1;
+    }
+    char *filename_str = YASL_getcstring(filename);
+
+    size_t mode_len = strlen(mode_str);
+    size_t filename_len = strlen(filename_str);
+
+    if (mode_len > 2 || mode_len < 1 || mode_len == 2 && mode_str[1] != '+') {
+        return -1;
+    }
+
+    FILE *f;
+    if (mode_len == 1) {
+        switch (mode_str[0]) {
+            case 'r':
+                f = fopen(filename_str, "r");
+                break;
+            case 'w':
+                f = fopen(filename_str, "w");
+                break;
+            case 'a':
+                f = fopen(filename_str, "a");
+                break;
+            default:
+                // invalid mode;
+                return -1;
+        }
+    }
+    if (mode_len == 2) {
+        switch (mode_str[0]) {
+            case 'r':
+                f = fopen(filename_str, "r+");
+                break;
+            case 'w':
+                f = fopen(filename_str, "w+");
+                break;
+            case 'a':
+                f = fopen(filename_str, "a+");
+                break;
+            default:
+                // invalid mode;
+                return -1;
+        }
+    }
+    YASL_pushobject(S, f ? YASL_UserData(f, YASL_FILE) : YASL_Undef());
+    return 0;
 }
+
+int YASL_io_read(struct YASL_State *S) {
+    struct YASL_Object *mode = YASL_popobject(S);
+    char *mode_str;
+
+    if (YASL_isundef(mode) == YASL_SUCCESS) {
+        mode_str = "a";
+    } else if (YASL_isstring(mode) == YASL_SUCCESS) {
+        mode_str = YASL_getcstring(mode);
+    } else {
+        return -1;
+    }
+
+    struct YASL_Object *file = YASL_popobject(S);
+    FILE *f;
+
+
+    if (YASL_isuserdata(file, YASL_FILE) == YASL_SUCCESS) {
+        f = YASL_UserData_getdata(file);
+    } else {
+        return -1;
+    }
+
+    size_t mode_len = strlen(mode_str);
+
+    if (mode_len != 1) {
+        return -1;
+    }
+
+    switch (mode_str[0]) {
+        case 'a':
+            fseek(f, 0, SEEK_END);
+            size_t fsize = ftell(f);
+            fseek(f, 0, SEEK_SET);
+
+            char *string = malloc(fsize + 1);
+            fread(string, fsize, 1, f);
+            string[fsize] = '\0';
+            YASL_pushobject(S, YASL_CString(string));
+            return 0;
+        default:
+            return -1;
+    }
+
+}
+
+int YASL_load_io(struct YASL_State *S) {
+    struct YASL_Object *io = YASL_Table();
+
+    YASL_Table_set(io,
+                   YASL_CString("open"),
+                   YASL_CFunction(YASL_io_open, 2));
+    YASL_Table_set(io,
+                   YASL_CString("read"),
+                   YASL_CFunction(YASL_io_read, 2));
+
+    YASL_declglobal(S, "io");
+    YASL_pushobject(S, io);
+    YASL_setglobal(S, "io");
+
+    return YASL_SUCCESS;
+}
+
