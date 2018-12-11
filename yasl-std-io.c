@@ -25,7 +25,7 @@ int YASL_io_open(struct YASL_State *S) {
     size_t mode_len = strlen(mode_str);
     size_t filename_len = strlen(filename_str);
 
-    if (mode_len > 2 || mode_len < 1 || mode_len == 2 && mode_str[1] != '+') {
+    if (mode_len > 2 || mode_len < 1 || (mode_len == 2 && mode_str[1] != '+')) {
         return -1;
     }
 
