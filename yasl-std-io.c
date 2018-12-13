@@ -114,16 +114,24 @@ int YASL_io_read(struct YASL_State *S) {
 int YASL_load_io(struct YASL_State *S) {
     struct YASL_Object *io = YASL_Table();
 
-    YASL_Table_set(io,
-                   YASL_CString("open"),
-                   YASL_CFunction(YASL_io_open, 2));
-    YASL_Table_set(io,
-                   YASL_CString("read"),
-                   YASL_CFunction(YASL_io_read, 2));
+    struct YASL_Object *open_str = YASL_CString("open");
+    struct YASL_Object *open_fn = YASL_CFunction(YASL_io_open, 2);
+
+    YASL_Table_set(io, open_str, open_fn);
+
+    struct YASL_Object *read_str = YASL_CString("read");
+    struct YASL_Object *read_fn = YASL_CFunction(YASL_io_read, 2);
+
+    YASL_Table_set(io, read_str, read_fn);
 
     YASL_declglobal(S, "io");
     YASL_pushobject(S, io);
     YASL_setglobal(S, "io");
+
+    free(open_str);
+    free(open_fn);
+    free(read_str);
+    free(read_fn);
 
     return YASL_SUCCESS;
 }
